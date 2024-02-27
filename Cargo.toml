@@ -1,3 +1,4 @@
+workspace = { members = ["example/listen"] }
 [package]
 name = "keyboard_listener_windows"
 version = "0.1.0"
@@ -7,12 +8,8 @@ authors = ["self@lemonneko.moe"]
 description = "You can use this library to listen your keyboard press and release ON windows."
 keywords = ["windows", "win32", "keyboard-listener"]
 categories = ["os::windows-apis"]
-include = ["/README.md", "/LICENSE", "/Cargo.toml"]
+include = ["/README.md", "/LICENSE", "/Cargo.toml", "/src/**/*"]
 readme = "README.md"
-
-[[bin]]
-name = "listen-keyboard-event"
-path = "example/listen.rs"
 
 [package.metadata.doc.rs]
 default-target = "x86_64-pc-windows-msvc"
