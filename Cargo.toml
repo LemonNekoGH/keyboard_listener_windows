@@ -10,6 +10,8 @@ keywords = ["windows", "win32", "keyboard-listener"]
 categories = ["os::windows-apis"]
 include = ["/README.md", "/LICENSE", "/Cargo.toml", "/src/**/*"]
 readme = "README.md"
+repository = "https://github.com/LemonNekoGH/keyboard_listener_windows"
+homepage = "https://github.com/LemonNekoGH/keyboard_listener_windows"
 
 [package.metadata.doc.rs]
 default-target = "x86_64-pc-windows-msvc"

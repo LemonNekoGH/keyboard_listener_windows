@@ -36,7 +36,7 @@ Keyboard event: Event { timestamp: 1709032907456, is_key_down: false, key: "KeyD
 ```
 You can clone this repository then run this example using cargo:
 ```shell
-$ cargo run --package keyboard_listener_windows --bin listen-keyboard-event
+$ cd example/listen && cargo run
 ```
 
 OK, that's all, if you need more feature, please use crate [rdev](https://github.com/Narsil/rdev).
