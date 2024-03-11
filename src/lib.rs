@@ -1,12 +1,14 @@
 use std::os::raw::c_int;
 use std::ptr::null_mut;
+use std::thread::sleep;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
 use winapi::shared::minwindef::{DWORD, LPARAM, LRESULT, WORD, WPARAM};
 use winapi::shared::windef::HHOOK;
 use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::winuser::{
-    CallNextHookEx, GetMessageW, SetWindowsHookExW, HC_ACTION, KBDLLHOOKSTRUCT, WH_KEYBOARD_LL,
-    WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
+    CallNextHookEx, GetMessageW, PeekMessageW, SetWindowsHookExW, UnhookWindowsHookEx, HC_ACTION,
+    KBDLLHOOKSTRUCT, WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
 };
 
 pub static mut HOOK: HHOOK = null_mut();
@@ -38,20 +40,38 @@ pub enum ListenError {
 
 type RawCallback = unsafe extern "system" fn(code: c_int, param: WPARAM, lpdata: LPARAM) -> LRESULT;
 
-pub fn listen<T>(callback: T) -> Result<(), HookError>
+static mut LISTEN_STARTED: bool = false;
+
+pub fn start_listen<T>(callback: T)
 where
-    T: FnMut(Event) + 'static,
+    T: FnMut(Event) + 'static + Send,
 {
     unsafe {
-        GLOBAL_CALLBACK = Some(Box::new(callback));
-        set_key_hook(raw_callback)?;
-        GetMessageW(null_mut(), null_mut(), 0, 0);
+        LISTEN_STARTED = true;
+        std::thread::spawn(|| {
+            set_key_hook(raw_callback).expect("failed to hook windows key event");
+            GLOBAL_CALLBACK = Some(Box::new(callback));
+            while LISTEN_STARTED {
+                if PeekMessageW(null_mut(), null_mut(), 0, 0, 0) == 0 {
+                    sleep(Duration::from_millis(16));
+                } else {
+                    GetMessageW(null_mut(), null_mut(), 0, 0);
+                }
+            }
+        });
     }
-    Ok(())
+}
+
+pub fn stop_listen() {
+    unsafe {
+        LISTEN_STARTED = false;
+        UnhookWindowsHookEx(HOOK);
+        GLOBAL_CALLBACK = None;
+    }
 }
 
 /// # Safety
-pub unsafe fn set_key_hook(callback: RawCallback) -> Result<(), HookError> {
+unsafe fn set_key_hook(callback: RawCallback) -> Result<(), HookError> {
     let hook = SetWindowsHookExW(WH_KEYBOARD_LL, Some(callback), null_mut(), 0);
 
     if hook.is_null() {
@@ -223,13 +243,13 @@ decl_keycodes! {
 }
 
 /// # Safety
-pub unsafe fn get_code(lpdata: LPARAM) -> DWORD {
+unsafe fn get_code(lpdata: LPARAM) -> DWORD {
     let kb = *(lpdata as *const KBDLLHOOKSTRUCT);
     kb.vkCode
 }
 
 /// # Safety
-pub unsafe fn convert(param: WPARAM, lpdata: LPARAM) -> (Option<&'static str>, bool) {
+unsafe fn convert(param: WPARAM, lpdata: LPARAM) -> (Option<&'static str>, bool) {
     match param.try_into() {
         Ok(WM_KEYDOWN) | Ok(WM_SYSKEYDOWN) => {
             let code = get_code(lpdata);
@@ -248,6 +268,7 @@ pub unsafe fn convert(param: WPARAM, lpdata: LPARAM) -> (Option<&'static str>, b
 #[cfg(test)]
 mod test {
     use super::{code_from_key, key_from_code};
+
     #[test]
     fn test_reversible() {
         for code in 0..65535 {

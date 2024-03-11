@@ -12,27 +12,36 @@ $ cargo add keyboard_listener_windows
 ## Listening to global events
 Example:
 ```rust
-use keyboard_listener_windows::{listen, Event};
+use std::time::Duration;
+use keyboard_listener_windows::{start_listen, stop_listen, Event};
 
 fn main() {
-    // This will block.
-    if let Err(error) = listen(callback) {
-        println!("Error: {:?}", error)
-    }
+    start_listen(callback);
+    println!("start listen");
+
+    // you can stop listen any time
+    std::thread::spawn(||{
+        std::thread::sleep(Duration::new(5,0));
+        stop_listen();
+        println!("stop listen")
+    }).join().unwrap();
 }
 
 fn callback(event: Event) {
     println!("Keyboard event: {:?}", event);
 }
+
 ```
 Sample output:
 ```
+start listen
 Keyboard event: Event { timestamp: 1709032907009, is_key_down: true, key: "KeyA" }
 Keyboard event: Event { timestamp: 1709032907036, is_key_down: true, key: "KeyS" }
 Keyboard event: Event { timestamp: 1709032907140, is_key_down: true, key: "KeyD" }
 Keyboard event: Event { timestamp: 1709032907216, is_key_down: false, key: "KeyA" }
 Keyboard event: Event { timestamp: 1709032907373, is_key_down: false, key: "KeyS" }
 Keyboard event: Event { timestamp: 1709032907456, is_key_down: false, key: "KeyD" }
+stop listen
 ```
 You can clone this repository then run this example using cargo:
 ```shell
